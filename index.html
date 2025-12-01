@@ -69,7 +69,7 @@
     let currentMonthIndex = 0;
 
     async function loadCalendarData() {
-      const response = await fetch(icalUrl);
+      const response = await fetch("basic.ics");
       const text = await response.text();
       const jcalData = ICAL.parse(text);
       const comp = new ICAL.Component(jcalData);
