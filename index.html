@@ -10,14 +10,14 @@
     button { margin: 0 5px; padding: 5px 10px; }
     .month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
     .day { border: 1px solid #ccc; padding: 10px; text-align: center; min-height: 60px; cursor: pointer; position: relative; }
-    .available { background-color: #c8f7c5; } /* green = available */
-    .busy { background-color: #f7c5c5; cursor: default; } /* red = busy */
-    .byrequest { background-color: #eee; color: #555; } /* grey = by request */
+    .available { background-color: #c8f7c5; }
+    .busy { background-color: #f7c5c5; cursor: default; }
+    .byrequest { background-color: #eee; color: #555; }
     .weekday-header { font-weight: bold; background: #ddd; cursor: default; }
     .legend { margin-top: 20px; }
     .legend-item { display: inline-block; margin-right: 20px; }
     .legend-box { display: inline-block; width: 20px; height: 20px; vertical-align: middle; margin-right: 5px; border: 1px solid #ccc; }
-    .today { border: 2px solid #000; } /* highlight today */
+    .today { border: 2px solid #000; }
     .day:hover::after {
       content: attr(data-tooltip);
       position: absolute;
@@ -47,17 +47,16 @@
   <h2 id="month-title"></h2>
   <div id="calendar"></div>
 
-  <!-- Legend -->
   <div class="legend">
     <div class="legend-item"><span class="legend-box available"></span> Available</div>
     <div class="legend-item"><span class="legend-box busy"></span> Busy</div>
     <div class="legend-item"><span class="legend-box byrequest"></span> By Request</div>
   </div>
 
-  <!-- Load ical.js -->
-  <script src="https://cdn.jsdelivr.net/npm/ical.js@latest/build/ical.min.js"></script>
   <script>
-    const icalUrl = "basic.ics"; // local file in repo root
+    // Your credentials
+    const calendarId = "patrickblissmusic@gmail.com";
+    const apiKey = "AIzaSyAZzcXiSs2108Z8W64J94D2b2eMqrLSNuQ";
     const bookingEmail = "booking@patrickblissmusic.com";
 
     let busyDates = new Set();
@@ -65,30 +64,26 @@
     let endDate = new Date(today);
     endDate.setDate(today.getDate() + 365);
 
-    let months = []; // store month start dates
+    let months = [];
     let currentMonthIndex = 0;
 
     async function loadCalendarData() {
       try {
-        const response = await fetch(icalUrl);
-        const text = await response.text();
-        const jcalData = ICAL.parse(text);
-        const comp = new ICAL.Component(jcalData);
-        const events = comp.getAllSubcomponents("vevent");
+        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?key=${apiKey}`;
+        const response = await fetch(url);
+        const data = await response.json();
 
-        busyDates = new Set(events.map(ev => {
-          const e = new ICAL.Event(ev);
-          return e.startDate.toJSDate().toISOString().split("T")[0];
+        busyDates = new Set(data.items.map(ev => {
+          const start = ev.start.date || ev.start.dateTime;
+          return new Date(start).toISOString().split("T")[0];
         }));
 
-        // Build list of months
         let current = new Date(today.getFullYear(), today.getMonth(), 1);
         while (current <= endDate) {
           months.push(new Date(current));
           current.setMonth(current.getMonth() + 1);
         }
 
-        // Populate dropdown
         const monthSelect = document.getElementById("month-select");
         months.forEach((m, i) => {
           const option = document.createElement("option");
@@ -117,7 +112,6 @@
       const calendarDiv = document.getElementById("calendar");
       calendarDiv.innerHTML = "";
 
-      // Weekday headers
       ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(d => {
         const h = document.createElement("div");
         h.textContent = d;
@@ -128,14 +122,12 @@
       const firstDay = new Date(monthStart.getFullYear(), monthStart.getMonth(), 1);
       const lastDay = new Date(monthStart.getFullYear(), monthStart.getMonth()+1, 0);
 
-      // Empty slots before first day
       for (let i=0; i<firstDay.getDay(); i++) {
         const empty = document.createElement("div");
         empty.classList.add("day");
         calendarDiv.appendChild(empty);
       }
 
-      // Fill days
       for (let d=1; d<=lastDay.getDate(); d++) {
         const dateObj = new Date(monthStart.getFullYear(), monthStart.getMonth(), d);
         const iso = dateObj.toISOString().split("T")[0];
@@ -143,7 +135,7 @@
         dayDiv.classList.add("day");
         dayDiv.textContent = d;
 
-        const dow = dateObj.getDay(); // 0=Sun, 1=Mon...
+        const dow = dateObj.getDay();
         if ([4,5,6,0].includes(dow)) { // Thu–Sun
           if (busyDates.has(iso)) {
             dayDiv.classList.add("busy");
@@ -171,7 +163,6 @@
           });
         }
 
-        // Highlight today
         if (dateObj.toDateString() === today.toDateString()) {
           dayDiv.classList.add("today");
         }
