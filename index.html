@@ -57,7 +57,7 @@
   <!-- Load ical.js -->
   <script src="https://cdn.jsdelivr.net/npm/ical.js@latest/build/ical.min.js"></script>
   <script>
-    const icalUrl = "https://calendar.google.com/calendar/ical/patrickblissmusic%40gmail.com/public/basic.ics";
+    const icalUrl = "basic.ics"; // local file in repo root
     const bookingEmail = "booking@patrickblissmusic.com";
 
     let busyDates = new Set();
@@ -69,38 +69,43 @@
     let currentMonthIndex = 0;
 
     async function loadCalendarData() {
-      const response = await fetch("basic.ics");
-      const text = await response.text();
-      const jcalData = ICAL.parse(text);
-      const comp = new ICAL.Component(jcalData);
-      const events = comp.getAllSubcomponents("vevent");
+      try {
+        const response = await fetch(icalUrl);
+        const text = await response.text();
+        const jcalData = ICAL.parse(text);
+        const comp = new ICAL.Component(jcalData);
+        const events = comp.getAllSubcomponents("vevent");
 
-      busyDates = new Set(events.map(ev => {
-        const e = new ICAL.Event(ev);
-        return e.startDate.toJSDate().toISOString().split("T")[0];
-      }));
+        busyDates = new Set(events.map(ev => {
+          const e = new ICAL.Event(ev);
+          return e.startDate.toJSDate().toISOString().split("T")[0];
+        }));
 
-      // Build list of months
-      let current = new Date(today.getFullYear(), today.getMonth(), 1);
-      while (current <= endDate) {
-        months.push(new Date(current));
-        current.setMonth(current.getMonth() + 1);
-      }
+        // Build list of months
+        let current = new Date(today.getFullYear(), today.getMonth(), 1);
+        while (current <= endDate) {
+          months.push(new Date(current));
+          current.setMonth(current.getMonth() + 1);
+        }
 
-      // Populate dropdown
-      const monthSelect = document.getElementById("month-select");
-      months.forEach((m, i) => {
-        const option = document.createElement("option");
-        option.value = i;
-        option.textContent = m.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-        monthSelect.appendChild(option);
-      });
-      monthSelect.addEventListener("change", e => {
-        currentMonthIndex = parseInt(e.target.value);
+        // Populate dropdown
+        const monthSelect = document.getElementById("month-select");
+        months.forEach((m, i) => {
+          const option = document.createElement("option");
+          option.value = i;
+          option.textContent = m.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+          monthSelect.appendChild(option);
+        });
+        monthSelect.addEventListener("change", e => {
+          currentMonthIndex = parseInt(e.target.value);
+          renderMonth(currentMonthIndex);
+        });
+
         renderMonth(currentMonthIndex);
-      });
-
-      renderMonth(currentMonthIndex);
+      } catch (err) {
+        console.error("Error loading calendar:", err);
+        document.getElementById("calendar").innerHTML = "<p>Could not load calendar data.</p>";
+      }
     }
 
     function renderMonth(index) {
