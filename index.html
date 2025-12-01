@@ -68,17 +68,25 @@
 
     async function loadCalendarData() {
       try {
-        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?key=${apiKey}&showDeleted=false&singleEvents=true&orderBy=startTime&timeMin=${new Date().toISOString()}`;
-        const response = await fetch(url);
+        const url = `https://www.googleapis.com/calendar/v3/freeBusy?key=${apiKey}`;
+        const body = {
+          timeMin: new Date().toISOString(),
+          timeMax: endDate.toISOString(),
+          items: [{ id: calendarId }]
+        };
+
+        const response = await fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(body)
+        });
         const data = await response.json();
 
         busyDates = new Set();
-        for (const ev of (data.items || [])) {
-          const start = ev.start?.date || ev.start?.dateTime;
-          const end = ev.end?.date || ev.end?.dateTime;
-          if (!start || !end) continue;
-          const startDate = new Date(start);
-          const endDateObj = new Date(end);
+        const busyRanges = data.calendars?.[calendarId]?.busy || [];
+        for (const range of busyRanges) {
+          const startDate = new Date(range.start);
+          const endDateObj = new Date(range.end);
           const d = new Date(startDate);
           while (d < endDateObj) {
             busyDates.add(d.toISOString().split("T")[0]);
@@ -156,18 +164,7 @@
             dayDiv.addEventListener("click", () => {
               const subject = encodeURIComponent(`Booking Request: ${dateObj.toDateString()}`);
               const body = encodeURIComponent(
-                `Hello Patrick,\n\nI’d like to book you for ${dateObj.toDateString()}.\n\nEvent Details:\n- Location:\n- Time:\n- Type of Event:\n\nThanks!`
-              );
-              window.location.href = `mailto:${bookingEmail}?subject=${subject}&body=${body}`;
-            });
-          }
-        } else {
-          dayDiv.classList.add("byrequest");
-          dayDiv.dataset.tooltip = "Click to request booking";
-          dayDiv.addEventListener("click", () => {
-            const subject = encodeURIComponent(`Booking Request (By Request): ${dateObj.toDateString()}`);
-            const body = encodeURIComponent(
-              `Hello Patrick,\n\nI’d like to book you for ${dateObj.toDateString()} (By Request).\n\nEvent Details:\n- Location:\n- Time:\n- Type of Event:\n\nThanks!`
+                `Hello Patrick,\n\nI’d like to book you for ${dateObj.toDateString()} (By Request).\n\nEvent Details:\n- Location:\n- Time:\n- Type of Event:\n\nThanks!`
             );
             window.location.href = `mailto:${bookingEmail}?subject=${subject}&body=${body}`;
           });
