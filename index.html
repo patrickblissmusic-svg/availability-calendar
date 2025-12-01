@@ -5,37 +5,38 @@
   <title>Availability Calendar</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    h1 { margin: 0 0 10px; }
-    h2 { margin: 10px 0; }
-    .calendar-controls { margin-bottom: 10px; display: flex; gap: 8px; align-items: center; }
-    button { padding: 6px 10px; }
-    select { padding: 6px 10px; }
-    /* Force a 7-column grid */
-    #calendar {
-      display: grid;
-      grid-template-columns: repeat(7, 1fr);
-      gap: 5px;
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: url('https://images.squarespace-cdn.com/content/v1/659d61b9993b4640fe5eb493/73eae0ff-9759-4b9b-a8c8-0b08b11aaccf/IMG_6055.JPEG') no-repeat center center fixed;
+      background-size: cover;
+      color: #fff;
     }
-    .day { border: 1px solid #ccc; padding: 10px; text-align: center; min-height: 60px; cursor: pointer; position: relative; }
-    .available { background-color: #c8f7c5; }
-    .busy { background-color: #f7c5c5; cursor: default; }
-    .byrequest { background-color: #eee; color: #555; }
-    .weekday-header { font-weight: bold; background: #ddd; cursor: default; }
-    .today { border: 2px solid #000; }
+    h1, h2 { text-shadow: 1px 1px 3px rgba(0,0,0,0.7); }
+    .calendar-controls { margin-bottom: 10px; display: flex; gap: 8px; align-items: center; }
+    button, select { padding: 6px 10px; border-radius: 4px; border: none; }
+    #calendar { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
+    .day {
+      border: 1px solid rgba(255,255,255,0.4);
+      padding: 10px; text-align: center; min-height: 60px;
+      cursor: pointer; position: relative;
+      background-color: rgba(0,0,0,0.4); color: #fff;
+      border-radius: 6px; transition: transform 0.2s, background-color 0.2s;
+    }
+    .day:hover { transform: scale(1.05); background-color: rgba(255,255,255,0.2); }
+    .available { background-color: rgba(0, 255, 0, 0.3); }
+    .busy { background-color: rgba(255, 0, 0, 0.3); cursor: default; }
+    .byrequest { background-color: rgba(255, 255, 255, 0.2); color: #ddd; }
+    .weekday-header { font-weight: bold; background: rgba(255,255,255,0.2); }
+    .today { border: 2px solid #fff; }
     .day:hover::after {
       content: attr(data-tooltip);
-      position: absolute;
-      bottom: -25px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: #333; color: #fff; padding: 3px 6px; font-size: 12px; white-space: nowrap; border-radius: 3px;
+      position: absolute; bottom: -25px; left: 50%; transform: translateX(-50%);
+      background: rgba(0,0,0,0.8); color: #fff; padding: 3px 6px;
+      font-size: 12px; white-space: nowrap; border-radius: 3px;
     }
     .legend { margin-top: 20px; display: flex; gap: 20px; flex-wrap: wrap; }
-    .legend-box { display: inline-block; width: 20px; height: 20px; vertical-align: middle; margin-right: 5px; border: 1px solid #ccc; }
-    @media (max-width: 600px) {
-      .day { padding: 5px; min-height: 40px; }
-    }
+    .legend-box { width: 20px; height: 20px; display: inline-block; margin-right: 5px; border: 1px solid #ccc; }
   </style>
 </head>
 <body>
@@ -55,9 +56,8 @@
   </div>
 
   <script>
-    // Your credentials
     const calendarId = "patrickblissmusic@gmail.com";
-    const apiKey = "AIzaSyAZzcXiSs2108Z8W64J94D2b2eMqrLSNuQ";
+    const apiKey = "YOUR_API_KEY_HERE";   // replace with your Google API key
     const bookingEmail = "booking@patrickblissmusic.com";
 
     let busyDates = new Set();
@@ -68,23 +68,17 @@
 
     async function loadCalendarData() {
       try {
-        // Fetch events (public calendar, free/busy works)
         const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?key=${apiKey}&showDeleted=false&singleEvents=true&orderBy=startTime&timeMin=${new Date().toISOString()}`;
         const response = await fetch(url);
         const data = await response.json();
 
-        // Build a set of busy dates, handling all-day and timed events
         busyDates = new Set();
         for (const ev of (data.items || [])) {
           const start = ev.start?.date || ev.start?.dateTime;
           const end = ev.end?.date || ev.end?.dateTime;
-
           if (!start || !end) continue;
-
           const startDate = new Date(start);
           const endDateObj = new Date(end);
-
-          // Iterate day-by-day from start to end-1 (Google all-day end is exclusive)
           const d = new Date(startDate);
           while (d < endDateObj) {
             busyDates.add(d.toISOString().split("T")[0]);
@@ -92,7 +86,6 @@
           }
         }
 
-        // Build month list (12 months ahead)
         months = [];
         let current = new Date(today.getFullYear(), today.getMonth(), 1);
         while (current <= endDate) {
@@ -100,7 +93,6 @@
           current.setMonth(current.getMonth() + 1);
         }
 
-        // Populate dropdown
         const monthSelect = document.getElementById("month-select");
         monthSelect.innerHTML = "";
         months.forEach((m, i) => {
@@ -130,7 +122,6 @@
       const calendarDiv = document.getElementById("calendar");
       calendarDiv.innerHTML = "";
 
-      // Weekday headers
       ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(d => {
         const h = document.createElement("div");
         h.textContent = d;
@@ -141,14 +132,12 @@
       const firstDay = new Date(monthStart.getFullYear(), monthStart.getMonth(), 1);
       const lastDay = new Date(monthStart.getFullYear(), monthStart.getMonth()+1, 0);
 
-      // Empty cells before first day
       for (let i=0; i<firstDay.getDay(); i++) {
         const empty = document.createElement("div");
         empty.classList.add("day");
         calendarDiv.appendChild(empty);
       }
 
-      // Day cells
       for (let d=1; d<=lastDay.getDate(); d++) {
         const dateObj = new Date(monthStart.getFullYear(), monthStart.getMonth(), d);
         const iso = dateObj.toISOString().split("T")[0];
@@ -156,8 +145,8 @@
         dayDiv.classList.add("day");
         dayDiv.textContent = d;
 
-        const dow = dateObj.getDay(); // 0=Sun .. 6=Sat
-        if ([4,5,6,0].includes(dow)) { // Thu–Sun
+        const dow = dateObj.getDay();
+        if ([4,5,6,0].includes(dow)) {
           if (busyDates.has(iso)) {
             dayDiv.classList.add("busy");
             dayDiv.dataset.tooltip = "Unavailable";
@@ -193,6 +182,7 @@
       }
     }
 
+    // Prev/Next controls
     document.getElementById("prev").addEventListener("click", () => {
       if (currentMonthIndex > 0) {
         currentMonthIndex--;
@@ -201,12 +191,13 @@
     });
 
     document.getElementById("next").addEventListener("click", () => {
-      if (currentMonthIndex < months.length-1) {
+      if (currentMonthIndex < months.length - 1) {
         currentMonthIndex++;
         renderMonth(currentMonthIndex);
       }
     });
 
+    // Initial load
     loadCalendarData();
   </script>
 </body>
