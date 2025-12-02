@@ -94,62 +94,66 @@
   }
 
   async function loadCalendarData() {
-    try {
-      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?key=${apiKey}&showDeleted=false&singleEvents=true&orderBy=startTime&timeMin=${new Date().toISOString()}`;
-      const response = await fetch(url);
-      const data = await response.json();
+  try {
+    // Expand events for the next year
+    const oneYearLater = new Date();
+    oneYearLater.setFullYear(oneYearLater.getFullYear() + 1);
 
-      busyDates = new Map();
-      for (const ev of (data.items || [])) {
-        const start = ev.start?.dateTime || ev.start?.date;
-        const end = ev.end?.dateTime || ev.end?.date;
-        if (!start || !end) continue;
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?key=${apiKey}&showDeleted=false&singleEvents=true&orderBy=startTime&timeMin=${new Date().toISOString()}&timeMax=${oneYearLater.toISOString()}`;
 
-        const startDate = new Date(start);
-        const endDateObj = new Date(end);
-        const d = new Date(startDate);
+    const response = await fetch(url);
+    const data = await response.json();
 
-        let title = ev.summary || "Busy";
-        let details = `${title} — ${toEST(start)} to ${toEST(end)}`;
+    busyDates = new Map();
+    for (const ev of (data.items || [])) {
+      const start = ev.start?.dateTime;
+      const end = ev.end?.dateTime;
+      if (!start || !end) continue;
 
-        while (d < endDateObj) {
-          const iso = d.toISOString().split("T")[0];
-          busyDates.set(iso, details);
-          d.setDate(d.getDate() + 1);
-        }
+      const startDate = new Date(start);
+      const endDateObj = new Date(end);
+      const d = new Date(startDate);
+
+      let title = ev.summary || "Busy";
+      let details = `${title} — ${toEST(start)} to ${toEST(end)}`;
+
+      while (d < endDateObj) {
+        const iso = d.toISOString().split("T")[0];
+        busyDates.set(iso, details);
+        d.setDate(d.getDate() + 1);
       }
-
-      // Build month list once
-      months = [];
-      let current = new Date(today.getFullYear(), today.getMonth(), 1);
-      while (current <= endDate) {
-        months.push(new Date(current));
-        current.setMonth(current.getMonth() + 1);
-      }
-
-      const monthSelect = document.getElementById("month-select");
-      if (!monthSelect) return;
-
-      monthSelect.innerHTML = "";
-      months.forEach((m, i) => {
-        const option = document.createElement("option");
-        option.value = i;
-        option.textContent = m.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-        monthSelect.appendChild(option);
-      });
-      monthSelect.addEventListener("change", e => {
-        currentMonthIndex = parseInt(e.target.value, 10);
-        renderMonth(currentMonthIndex);
-      });
-
-      // Render the first month
-      renderMonth(currentMonthIndex);
-    } catch (err) {
-      console.error("Error loading calendar:", err);
-      const c = document.getElementById("calendar");
-      if (c) c.innerHTML = "<p>Could not load calendar data.</p>";
     }
+
+    // Build month list once
+    months = [];
+    let current = new Date(today.getFullYear(), today.getMonth(), 1);
+    while (current <= endDate) {
+      months.push(new Date(current));
+      current.setMonth(current.getMonth() + 1);
+    }
+
+    const monthSelect = document.getElementById("month-select");
+    if (!monthSelect) return;
+
+    monthSelect.innerHTML = "";
+    months.forEach((m, i) => {
+      const option = document.createElement("option");
+      option.value = i;
+      option.textContent = m.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+      monthSelect.appendChild(option);
+    });
+    monthSelect.addEventListener("change", e => {
+      currentMonthIndex = parseInt(e.target.value, 10);
+      renderMonth(currentMonthIndex);
+    });
+
+    renderMonth(currentMonthIndex);
+  } catch (err) {
+    console.error("Error loading calendar:", err);
+    const c = document.getElementById("calendar");
+    if (c) c.innerHTML = "<p>Could not load calendar data.</p>";
   }
+}
 
   function renderMonth(index) {
     const monthStart = months[index];
