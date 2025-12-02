@@ -62,7 +62,7 @@
 
   <script>
     const calendarId = "patrickblissmusic@gmail.com";
-    const apiKey = "AIzaSyAZzcXiSs2108Z8W64J94D2b2eMqrLSNuQ";   // replace with your Google API key
+    const apiKey = "YOUR_API_KEY_HERE";   // replace with your Google API key
     const bookingEmail = "booking@patrickblissmusic.com";
 
     let busyDates = new Map();
@@ -91,11 +91,17 @@
           let title = ev.summary || "Busy";
           let location = "";
           if (ev.location) {
-            const parts = ev.location.split(",");
+            const parts = ev.location.split(",").map(p => p.trim());
             if (parts.length >= 2) {
-              const city = parts[parts.length - 2].trim();
-              const state = parts[parts.length - 1].trim();
-              location = `${city}, ${state}`;
+              let state = parts[parts.length - 1];
+              let city = parts[parts.length - 2];
+
+              // If "state" looks like ZIP or country, adjust
+              if (state.match(/^\d{5}$/) || state.length > 3) {
+                state = parts[parts.length - 2];
+                city = parts[parts.length - 3] || "";
+              }
+              location = city && state ? `${city}, ${state}` : city || state;
             }
           }
           const details = location ? `${title} — ${location}` : title;
@@ -185,6 +191,20 @@
             info.textContent = "Available";
             dayDiv.appendChild(info);
             dayDiv.addEventListener("click", () => {
+              const subject = encodeURIComponent(`Booking Request: ${dateObj.toDateString()}`);
+              const body = encodeURIComponent(
+                `Hello Patrick,\n\nI’d like to book you for ${dateObj.toDateString()}.\n\nEvent Details:\n- Location:\n- Time:\n- Type of Event:\n\nThanks!`
+              );
+              window.location.href = `mailto:${bookingEmail}?subject=${subject}&body=${body}`;
+            });
+          }
+        } else {
+          dayDiv.classList.add("byrequest");
+          const info = document.createElement("div");
+          info.classList.add("event-info");
+          info.textContent = "By Request";
+          dayDiv.appendChild(info);
+          dayDiv.addEventListener("click", () => {
             const subject = encodeURIComponent(`Booking Request (By Request): ${dateObj.toDateString()}`);
             const body = encodeURIComponent(
               `Hello Patrick,\n\nI’d like to book you for ${dateObj.toDateString()} (By Request).\n\nEvent Details:\n- Location:\n- Time:\n- Type of Event:\n\nThanks!`
