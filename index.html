@@ -73,177 +73,187 @@
   </div>
 
     <script>
-    const calendarId = "patrickblissmusic@gmail.com";
-    const apiKey = "AIzaSyAZzcXiSs2108Z8W64J94D2b2eMqrLSNuQ";  // your API key
-    const bookingEmail = "booking@patrickblissmusic.com";
+  const calendarId = "patrickblissmusic@gmail.com";
+  const apiKey = "AIzaSyAZzcXiSs2108Z8W64J94D2b2eMqrLSNuQ";  // your API key
+  const bookingEmail = "booking@patrickblissmusic.com";
 
-    let busyDates = new Map();
-    const today = new Date();
-    const endDate = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
-    let months = [];
-    let currentMonthIndex = 0;
+  let busyDates = new Map();
+  const today = new Date();
+  const endDate = new Date(today.getFullYear() + 1, today.getMonth(), today.getDate());
+  let months = [];
+  let currentMonthIndex = 0;
 
-    function toEST(dateStr) {
-      const d = new Date(dateStr);
-      return d.toLocaleTimeString("en-US", {
-        hour: "numeric",
-        minute: "2-digit",
-        hour12: true,
-        timeZone: "America/New_York"
+  function toEST(dateStr) {
+    const d = new Date(dateStr);
+    return d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+      timeZone: "America/New_York"
+    });
+  }
+
+  async function loadCalendarData() {
+    try {
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?key=${apiKey}&showDeleted=false&singleEvents=true&orderBy=startTime&timeMin=${new Date().toISOString()}`;
+      const response = await fetch(url);
+      const data = await response.json();
+
+      busyDates = new Map();
+      for (const ev of (data.items || [])) {
+        const start = ev.start?.dateTime || ev.start?.date;
+        const end = ev.end?.dateTime || ev.end?.date;
+        if (!start || !end) continue;
+
+        const startDate = new Date(start);
+        const endDateObj = new Date(end);
+        const d = new Date(startDate);
+
+        let title = ev.summary || "Busy";
+        let details = `${title} — ${toEST(start)} to ${toEST(end)}`;
+
+        while (d < endDateObj) {
+          const iso = d.toISOString().split("T")[0];
+          busyDates.set(iso, details);
+          d.setDate(d.getDate() + 1);
+        }
+      }
+
+      // Build month list once
+      months = [];
+      let current = new Date(today.getFullYear(), today.getMonth(), 1);
+      while (current <= endDate) {
+        months.push(new Date(current));
+        current.setMonth(current.getMonth() + 1);
+      }
+
+      const monthSelect = document.getElementById("month-select");
+      if (!monthSelect) return;
+
+      monthSelect.innerHTML = "";
+      months.forEach((m, i) => {
+        const option = document.createElement("option");
+        option.value = i;
+        option.textContent = m.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+        monthSelect.appendChild(option);
       });
-    }
-
-    async function loadCalendarData() {
-      try {
-        const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events?key=${apiKey}&showDeleted=false&singleEvents=true&orderBy=startTime&timeMin=${new Date().toISOString()}`;
-        const response = await fetch(url);
-        const data = await response.json();
-
-        busyDates = new Map();
-        for (const ev of (data.items || [])) {
-          const start = ev.start?.dateTime || ev.start?.date;
-          const end = ev.end?.dateTime || ev.end?.date;
-          if (!start || !end) continue;
-
-          const startDate = new Date(start);
-          const endDateObj = new Date(end);
-          const d = new Date(startDate);
-
-          let title = ev.summary || "Busy";
-          let details = `${title} — ${toEST(start)} to ${toEST(end)}`;
-
-          while (d < endDateObj) {
-            const iso = d.toISOString().split("T")[0];
-            busyDates.set(iso, details);
-            d.setDate(d.getDate() + 1);
-          }
-        }
-
-        months = [];
-        let current = new Date(today.getFullYear(), today.getMonth(), 1);
-        while (current <= endDate) {
-          months.push(new Date(current));
-          current.setMonth(current.getMonth() + 1);
-        }
-
-        const monthSelect = document.getElementById("month-select");
-        monthSelect.innerHTML = "";
-        months.forEach((m, i) => {
-          const option = document.createElement("option");
-          option.value = i;
-          option.textContent = m.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-          monthSelect.appendChild(option);
-        });
-        monthSelect.addEventListener("change", e => {
-          currentMonthIndex = parseInt(e.target.value, 10);
-          renderMonth(currentMonthIndex);
-        });
-
+      monthSelect.addEventListener("change", e => {
+        currentMonthIndex = parseInt(e.target.value, 10);
         renderMonth(currentMonthIndex);
-      } catch (err) {
-        console.error("Error loading calendar:", err);
-        document.getElementById("calendar").innerHTML = "<p>Could not load calendar data.</p>";
-      }
-    }
-
-    function renderMonth(index) {
-      const monthStart = months[index];
-      document.getElementById("month-title").textContent =
-        monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" });
-      document.getElementById("month-select").value = index;
-
-      const calendarDiv = document.getElementById("calendar");
-      calendarDiv.innerHTML = "";
-
-      ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(d => {
-        const h = document.createElement("div");
-        h.textContent = d;
-        h.classList.add("day","weekday-header");
-        calendarDiv.appendChild(h);
       });
 
-      const firstDay = new Date(monthStart.getFullYear(), monthStart.getMonth(), 1);
-      const lastDay = new Date(monthStart.getFullYear(), monthStart.getMonth()+1, 0);
+      // Render the first month
+      renderMonth(currentMonthIndex);
+    } catch (err) {
+      console.error("Error loading calendar:", err);
+      const c = document.getElementById("calendar");
+      if (c) c.innerHTML = "<p>Could not load calendar data.</p>";
+    }
+  }
 
-      for (let i=0; i<firstDay.getDay(); i++) {
-        const empty = document.createElement("div");
-        empty.classList.add("day");
-        calendarDiv.appendChild(empty);
-      }
+  function renderMonth(index) {
+    const monthStart = months[index];
+    const titleEl = document.getElementById("month-title");
+    if (titleEl) titleEl.textContent = monthStart.toLocaleDateString("en-US", { month: "long", year: "numeric" });
 
-      for (let d=1; d<=lastDay.getDate(); d++) {
-        const dateObj = new Date(monthStart.getFullYear(), monthStart.getMonth(), d);
-        const iso = dateObj.toISOString().split("T")[0];
-        const dayDiv = document.createElement("div");
-        dayDiv.classList.add("day");
+    const monthSelect = document.getElementById("month-select");
+    if (monthSelect) monthSelect.value = index;
 
-        const dateLabel = document.createElement("div");
-        dateLabel.textContent = d;
-        dateLabel.style.fontWeight = "bold";
-        dayDiv.appendChild(dateLabel);
+    const calendarDiv = document.getElementById("calendar");
+    if (!calendarDiv) return;
+    calendarDiv.innerHTML = "";
 
-        const dow = dateObj.getDay();
-        if ([4,5,6,0].includes(dow)) {
-          if (busyDates.has(iso)) {
-            dayDiv.classList.add("busy");
-            const info = document.createElement("div");
-            info.classList.add("event-info");
-            info.textContent = busyDates.get(iso);
-            dayDiv.appendChild(info);
-          } else {
-            dayDiv.classList.add("available");
-            const info = document.createElement("div");
-            info.classList.add("event-info");
-            info.textContent = "Available";
-            dayDiv.appendChild(info);
-            dayDiv.addEventListener("click", () => {
-              const subject = encodeURIComponent(`Booking Request: ${dateObj.toDateString()}`);
-              const body = encodeURIComponent(
-                `Hello Patrick,\n\nI’d like to book you for ${dateObj.toDateString()}.\n\nEvent Details:\n- Location:\n- Time:\n- Type of Event:\n\nThanks!`
-              );
-              window.location.href = `mailto:${bookingEmail}?subject=${subject}&body=${body}`;
-            });
-          }
-        } else {
-          dayDiv.classList.add("byrequest");
+    ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].forEach(d => {
+      const h = document.createElement("div");
+      h.textContent = d;
+      h.classList.add("day","weekday-header");
+      calendarDiv.appendChild(h);
+    });
+
+    const firstDay = new Date(monthStart.getFullYear(), monthStart.getMonth(), 1);
+    const lastDay = new Date(monthStart.getFullYear(), monthStart.getMonth()+1, 0);
+
+    for (let i=0; i<firstDay.getDay(); i++) {
+      const empty = document.createElement("div");
+      empty.classList.add("day");
+      calendarDiv.appendChild(empty);
+    }
+
+    for (let d=1; d<=lastDay.getDate(); d++) {
+      const dateObj = new Date(monthStart.getFullYear(), monthStart.getMonth(), d);
+      const iso = dateObj.toISOString().split("T")[0];
+      const dayDiv = document.createElement("div");
+      dayDiv.classList.add("day");
+
+      const dateLabel = document.createElement("div");
+      dateLabel.textContent = d;
+      dateLabel.style.fontWeight = "bold";
+      dayDiv.appendChild(dateLabel);
+
+      const dow = dateObj.getDay();
+      if ([4,5,6,0].includes(dow)) {
+        if (busyDates.has(iso)) {
+          dayDiv.classList.add("busy");
           const info = document.createElement("div");
           info.classList.add("event-info");
-          info.textContent = "By Request";
+          info.textContent = busyDates.get(iso);
+          dayDiv.appendChild(info);
+        } else {
+          dayDiv.classList.add("available");
+          const info = document.createElement("div");
+          info.classList.add("event-info");
+          info.textContent = "Available";
           dayDiv.appendChild(info);
           dayDiv.addEventListener("click", () => {
-            const subject = encodeURIComponent(`Booking Request (By Request): ${dateObj.toDateString()}`);
+            const subject = encodeURIComponent(`Booking Request: ${dateObj.toDateString()}`);
             const body = encodeURIComponent(
-              `Hello Patrick,\n\nI’d like to book you for ${dateObj.toDateString()} (By Request).\n\nEvent Details:\n- Location:\n- Time:\n- Type of Event:\n\nThanks!`
+              `Hello Patrick,\n\nI’d like to book you for ${dateObj.toDateString()}.\n\nEvent Details:\n- Location:\n- Time:\n- Type of Event:\n\nThanks!`
             );
             window.location.href = `mailto:${bookingEmail}?subject=${subject}&body=${body}`;
           });
         }
-
-        if (dateObj.toDateString() === today.toDateString()) {
-          dayDiv.classList.add("today");
-        }
-
-        calendarDiv.appendChild(dayDiv);
+      } else {
+        dayDiv.classList.add("byrequest");
+        const info = document.createElement("div");
+        info.classList.add("event-info");
+        info.textContent = "By Request";
+        dayDiv.appendChild(info);
+        dayDiv.addEventListener("click", () => {
+          const subject = encodeURIComponent(`Booking Request (By Request): ${dateObj.toDateString()}`);
+          const body = encodeURIComponent(
+            `Hello Patrick,\n\nI’d like to book you for ${dateObj.toDateString()} (By Request).\n\nEvent Details:\n- Location:\n- Time:\n- Type of Event:\n\nThanks!`
+          );
+          window.location.href = `mailto:${bookingEmail}?subject=${subject}&body=${body}`;
+        });
       }
-    }
 
-    // Prev/Next controls
-    document.getElementById("prev").addEventListener("click", () => {
+      if (dateObj.toDateString() === today.toDateString()) {
+        dayDiv.classList.add("today");
+      }
+
+      calendarDiv.appendChild(dayDiv);
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    const prevBtn = document.getElementById("prev");
+    const nextBtn = document.getElementById("next");
+    if (prevBtn) prevBtn.addEventListener("click", () => {
       if (currentMonthIndex > 0) {
         currentMonthIndex--;
         renderMonth(currentMonthIndex);
       }
     });
-
-    document.getElementById("next").addEventListener("click", () => {
-      if (currentMonthIndex < months.length - 1) {
+    if (nextBtn) nextBtn.addEventListener("click", () => {
+      if (currentMonthIndex < months.length-1) {
         currentMonthIndex++;
         renderMonth(currentMonthIndex);
       }
     });
 
-    // Initial load
+    // Fetch once per load
     loadCalendarData();
-  </script>
+  });
+</script>
 </body>
 </html>
