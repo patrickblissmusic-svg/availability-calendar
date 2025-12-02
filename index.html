@@ -117,8 +117,8 @@
       let title = ev.summary || "Busy";
       let details = `${title} — ${toEST(start)} to ${toEST(end)}`;
 
-      while (d < endDateObj) {
-        const iso = d.toISOString().split("T")[0];
+      while (d <= endDateObj) {
+        const iso = d.toLocaleDateString("en-CA", { timeZone: "America/New_York" });
         busyDates.set(iso, details);
         d.setDate(d.getDate() + 1);
       }
