@@ -23,7 +23,8 @@
       min-height: 80px;
       cursor: pointer;
       position: relative;
-      background-color: rgba(0,0,0,0.4);
+      background: linear-gradient(to bottom, rgba(255,255,255,0.3), rgba(255,255,255,0.05)),
+                  rgba(0,0,0,0.4);
       color: #fff;
       border-radius: 12px;
       transition: transform 0.2s, background-color 0.2s;
@@ -32,8 +33,19 @@
       justify-content: flex-start;
       align-items: center;
       font-size: 12px;
+      box-shadow: inset 0 1px 3px rgba(255,255,255,0.6),
+                  0 2px 6px rgba(0,0,0,0.5);
     }
     .day:hover { transform: scale(1.05); background-color: rgba(255,255,255,0.25); }
+    .day:hover::after {
+      content: "";
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      border-radius: 12px;
+      background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 60%);
+      pointer-events: none;
+    }
     .available { background-color: rgba(0, 255, 0, 0.3); }
     .busy { background-color: rgba(255, 0, 0, 0.3); cursor: default; }
     .byrequest { background-color: rgba(128, 128, 128, 0.3); color: #ddd; }
@@ -60,7 +72,7 @@
     <div><span class="legend-box byrequest"></span> By Request</div>
   </div>
 
-  <script>
+    <script>
     const calendarId = "patrickblissmusic@gmail.com";
     const apiKey = "AIzaSyAZzcXiSs2108Z8W64J94D2b2eMqrLSNuQ";  // your API key
     const bookingEmail = "booking@patrickblissmusic.com";
@@ -187,37 +199,51 @@
             dayDiv.addEventListener("click", () => {
               const subject = encodeURIComponent(`Booking Request: ${dateObj.toDateString()}`);
               const body = encodeURIComponent(
-            `Hello Patrick,\n\nI’d like to book you for ${dateObj.toDateString()} (By Request).\n\nEvent Details:\n- Location:\n- Time:\n- Type of Event:\n\nThanks!`
-          );
-          window.location.href = `mailto:${bookingEmail}?subject=${subject}&body=${body}`;
-        });
+                `Hello Patrick,\n\nI’d like to book you for ${dateObj.toDateString()}.\n\nEvent Details:\n- Location:\n- Time:\n- Type of Event:\n\nThanks!`
+              );
+              window.location.href = `mailto:${bookingEmail}?subject=${subject}&body=${body}`;
+            });
+          }
+        } else {
+          dayDiv.classList.add("byrequest");
+          const info = document.createElement("div");
+          info.classList.add("event-info");
+          info.textContent = "By Request";
+          dayDiv.appendChild(info);
+          dayDiv.addEventListener("click", () => {
+            const subject = encodeURIComponent(`Booking Request (By Request): ${dateObj.toDateString()}`);
+            const body = encodeURIComponent(
+              `Hello Patrick,\n\nI’d like to book you for ${dateObj.toDateString()} (By Request).\n\nEvent Details:\n- Location:\n- Time:\n- Type of Event:\n\nThanks!`
+            );
+            window.location.href = `mailto:${bookingEmail}?subject=${subject}&body=${body}`;
+          });
+        }
+
+        if (dateObj.toDateString() === today.toDateString()) {
+          dayDiv.classList.add("today");
+        }
+
+        calendarDiv.appendChild(dayDiv);
       }
+    }
 
-      if (dateObj.toDateString() === today.toDateString()) {
-        dayDiv.classList.add("today");
+    // Prev/Next controls
+    document.getElementById("prev").addEventListener("click", () => {
+      if (currentMonthIndex > 0) {
+        currentMonthIndex--;
+        renderMonth(currentMonthIndex);
       }
+    });
 
-      calendarDiv.appendChild(dayDiv);
-    }
-  }
+    document.getElementById("next").addEventListener("click", () => {
+      if (currentMonthIndex < months.length - 1) {
+        currentMonthIndex++;
+        renderMonth(currentMonthIndex);
+      }
+    });
 
-  // Prev/Next controls
-  document.getElementById("prev").addEventListener("click", () => {
-    if (currentMonthIndex > 0) {
-      currentMonthIndex--;
-      renderMonth(currentMonthIndex);
-    }
-  });
-
-  document.getElementById("next").addEventListener("click", () => {
-    if (currentMonthIndex < months.length - 1) {
-      currentMonthIndex++;
-      renderMonth(currentMonthIndex);
-    }
-  });
-
-  // Initial load
-  loadCalendarData();
+    // Initial load
+    loadCalendarData();
   </script>
 </body>
 </html>
